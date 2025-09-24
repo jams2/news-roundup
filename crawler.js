@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as process from 'process'
 import fetch from 'node-fetch'
+import * as cheerio from 'cheerio'
 
 if (!process.env.OPENAI_API_KEY) {
     console.error('❌ OPENAI_API_KEY environment variable is required')
@@ -17,11 +18,18 @@ const openai = new OpenAI({
 // To save on API costs, I've commented out additional sites while you run 
 // initial tests. Uncomment these sites to do a full run of the news audit.
 const CHARITY_NEWS_WEBSITES = [
-    // "https://www.thirdsector.co.uk/news",
+    "https://www.thirdsector.co.uk/news",
     // "https://www.civilsociety.co.uk/",
     // "https://www.charitytoday.co.uk/",
     "https://www.bbc.co.uk/news/topics/c9z6w63q5elt"
 ]
+
+const SELECTORS = {
+    "https://www.thirdsector.co.uk/news": "section#main",
+    // "https://www.civilsociety.co.uk/": "",
+    // "https://www.charitytoday.co.uk/": "",
+    "https://www.bbc.co.uk/news/topics/c9z6w63q5elt": "main"
+}
 
 async function crawlAllNewsSources() {
     console.log('Starting news crawl...')
@@ -65,13 +73,13 @@ async function extractArticlesFromPage(pageUrl) {
     )
 
     const htmlContent = await page.text()
-    // console.log('begin\n', htmlContent, '\nend\n')
-    const open = htmlContent.indexOf('<main')
-    const close = htmlContent.indexOf('</main>')
-    const mainContent = htmlContent.substring(open, close)
-    console.log(open, close);
-    // console.log('begin\n', mainContent, '\nend\n')
-    return await analyzeHtmlForRecentArticles(mainContent, pageUrl)
+
+    const $ = cheerio.load(htmlContent)
+    
+    const selector = SELECTORS[pageUrl]
+    const selection = $(selector).html()
+
+    return await analyzeHtmlForRecentArticles(selection, pageUrl)
 }
 
 /**
